@@ -15,6 +15,6 @@ virtualenv==20.24.5
 flake8==6.1.0
 pytest
 autopep8
-azure-devops==6.0.0
+azure-devops
 PyGithub==1.55
 GitPython==3.1.18

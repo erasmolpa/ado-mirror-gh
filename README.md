@@ -38,4 +38,4 @@ This project provides a command-line tool (CLI) written in Python to perform bac
 ## Usage
 
 ```bash
-python gh_repo_backup/backup.py -o ORG_NAME -t ACCESS_TOKEN -d OUTPUT_DIR -r REPO_NAMES -rc -pb
+python .\replicate_repos.py -gho 'erasmolpaorg' -ght 'ghp_XXXXXXX' -adoo 'erasmolpa' -adop 'org-automation-test' -adot 'baw_XXXXXXXX'

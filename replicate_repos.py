@@ -1,9 +1,13 @@
+import os
+import datetime
+import logging
+import argparse
+import shutil
+import azure.devops.exceptions
 from azure.devops.connection import Connection
 from msrest.authentication import BasicAuthentication
 from github import Github
-import os
-import argparse
-import azure.devops.exceptions
+from git import Repo, Remote
 
 def authenticate_ado(ado_organization_url, ado_pat):
     ado_credentials = BasicAuthentication('', ado_pat)
@@ -18,11 +22,24 @@ def get_ado_repos(ado_connection, project_name):
 def create_github_mirror(github_org, repo_name):
     return github_org.create_repo(
         name=repo_name,
-        private=True
+        private=True,
+        allow_rebase_merge=True,
+        auto_init=True,
+        has_issues=False,
+        has_projects=False,
+        has_wiki=False,
     )
 
-def get_ado_repos(ado_connection, project_name):
-    return ado_connection.clients.get_git_client().get_repositories(project_name)
+
+def push_to_github(repo_temp):
+    print("Pushing changes to GitHub repo")
+    origin = repo_temp.remote(name='origin')
+    origin.push('main')
+
+def add_github_remote(repo, github_clone_url):
+    print(f"Adding GitHub remote: {github_clone_url}")
+    github_remote = repo.create_remote('github', url=github_clone_url)
+    return github_remote
 
 def replicate_repos(ado_org_name, ado_project_name, ado_access_token, ado_repos, gh_org_name, gh_access_token):
     ado_organization_url = f"https://dev.azure.com/{ado_org_name}"
@@ -41,7 +58,7 @@ def replicate_repos(ado_org_name, ado_project_name, ado_access_token, ado_repos,
         print(f"Error fetching repositories from Azure DevOps: {e}")
         return
 
-    if not ado_repos: 
+    if not ado_repos:
         ado_repos = [repo.name for repo in repos]
 
     try:
@@ -64,25 +81,37 @@ def replicate_repos(ado_org_name, ado_project_name, ado_access_token, ado_repos,
             print(f"Error creating GitHub repository: {e}")
             continue
 
-        print(f"Adding topics to GitHub repo: {github_repo.full_name}")
-        github_repo.add_to_topics(f"ADO Repo URL: {repo.remote_url}")
-        github_repo.add_to_topics(f"ADO Project: {ado_project_name}")
-        github_repo.add_to_topics(f"ADO Repo Name: {repo.name}")
+        #topics = [f"ADO Repo URL: {repo.remote_url}", f"ADO Project: {ado_project_name}", f"ADO Repo Name: {repo.name}"]
+        #github_repo.replace_topics(topics)
 
         local_path = f"./{repo.name}"
 
-        print(f"Cloning Azure DevOps repo to local path: {local_path}")
-        os.system(f'git clone {repo.remote_url} {local_path}')
-        os.chdir(local_path)
-        os.system(f'git remote add github {github_repo.clone_url}')
+        try:
+            os.makedirs(local_path, exist_ok=True)
+            clone_url_with_token = f"https://{ado_access_token}@dev.azure.com/{ado_org_name}/{ado_project_name}/_git/{repo.name}"
+            repo_temp = Repo.clone_from(clone_url_with_token, local_path, no_single_branch=True)
 
-        print("Pushing changes to GitHub repo")
-        os.system('git push --mirror github')
-        os.chdir('..')
+            # Cambiar a la nueva rama 'main'
+            repo_temp.git.checkout('main')
 
+            # Configurar el remoto de GitHub
+            github_remote = add_github_remote(repo_temp, f"https://{gh_access_token}@github.com/{github_repo.full_name}.git")
 
+            # Empujar al repositorio de GitHub
+            repo_temp.git.push('--force', 'github', 'main')
+
+        except Exception as e:
+            print(f"Error processing repository: {e}")
+        finally:
+           #if os.path.exists(local_path):
+            #    shutil.rmtree(local_path)
+            os.chdir('..')
+            ##TODO  dedlete localpath
+   
 
 if __name__ == "__main__":
+    
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     parser = argparse.ArgumentParser(description='Backup ADO repos into GitHub organization.')
     parser.add_argument('-adoo', '--ado_org_name', type=str, help='ADO org name')
     parser.add_argument('-adop', '--ado_project_name', type=str, help='ADO pro name')

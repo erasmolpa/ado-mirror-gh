@@ -38,4 +38,10 @@ This project provides a command-line tool (CLI) written in Python to perform bac
 ## Usage
 
 ```bash
-python .\replicate_repos.py -gho 'erasmolpaorg' -ght 'ghp_XXXXXXX' -adoo 'erasmolpa' -adop 'org-automation-test' -adot 'baw_XXXXXXXX'
+python .\replicate_repos.py -gho 'erasmolpaorg' -ght 'ghp_XXXXXXX' -adoo 'erasmolpa' -adop 'org-automation-test' -adot 'd5j5XXXXXXXXXXXXXXXXXXX'
+
+
+
+## References
+
+https://gist.github.com/wpoely86/1217d7ffa64fdabd2f98b28952c12a8c
